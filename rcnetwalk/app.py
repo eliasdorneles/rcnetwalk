@@ -3,7 +3,7 @@ from .ui import (
     TeePipe,
     SimplePipe,
     ElbowPipe,
-    RCLogo,
+    Computer,
     PALETTE
 )
 
@@ -25,26 +25,12 @@ def main():
         return
     widget = urwid.GridFlow(
         [
-             RCLogo(lighted=0),
-             TeePipe(rotate=2),
-             SimplePipe(rotate=1),
-             RCLogo(lighted=1),
+            Computer(is_server=True, rotate=1), TeePipe(), TeePipe(), Computer(rotate=3),
+            ElbowPipe(), TeePipe(), ElbowPipe(), Computer(rotate=3),
+            Computer(), TeePipe(), SimplePipe(), Computer(rotate=3),
+            Computer(rotate=1), TeePipe(), SimplePipe(), Computer(rotate=3),
+         ],
 
-             RCLogo(lighted=1),
-             ElbowPipe(rotate=2),
-             RCLogo(lighted=1),
-             RCLogo(lighted=0),
-
-             RCLogo(lighted=0),
-             RCLogo(lighted=1),
-             RCLogo(lighted=0),
-             RCLogo(lighted=1),
-
-             RCLogo(lighted=1),
-             RCLogo(lighted=0),
-             RCLogo(lighted=1),
-             RCLogo(lighted=0),
-        ],
         cell_width=20,
         h_sep=0,
         v_sep=0,

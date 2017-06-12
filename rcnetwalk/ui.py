@@ -27,9 +27,10 @@ PALETTE = [
 class BasePipe(urwid.WidgetWrap):
     content_choices = ()
 
-    def __init__(self, rotate=0):
+    def __init__(self, rotate=0, connected=False):
         if not self.content_choices:
             raise ValueError("You should set content_choices when subclassing BasePipe")
+        self.connected = connected
         self.iter_content = cycle([c.strip() for c in self.content_choices])
         self.text = urwid.Text(u'')
         self.rotate()
@@ -194,17 +195,35 @@ u'''
     ]
 
 
-class RCLogo(urwid.WidgetWrap):
-    def __init__(self, lighted=False):
+class Computer(urwid.WidgetWrap):
+    def __init__(self, connected=False, is_server=False, rotate=0):
         self.text = urwid.Text(u'')
-        self.lighted = lighted
+        self.connected = is_server or connected
+        self.iter_connector = cycle(['up', 'right', 'down', 'left'])
+        self._rotate()
+        if rotate:
+            for i in range(rotate):
+                self._rotate()
+        super(Computer, self).__init__(self.text)
+
+    def _rotate(self):
+        self.connector_position = next(self.iter_connector)
         self.update()
-        super(RCLogo, self).__init__(self.text)
 
     def update(self):
-        def get_line(index, line, lighted):
+        def get_line(index, line, connected):
+            if (index == 0 and self.connector_position == 'up'
+                    or index == 19 and self.connector_position == 'down'):
+                line = line[:8] + '    ' + line[12:]
+            if index in (4, 5):
+                if self.connector_position == 'left':
+                    line = '    ' + line[4:]
+                elif self.connector_position == 'right':
+                    line = line[:-5] + '    '
+            if index == 4 and self.connector_position == 'left':
+                line = '    ' + line[4:]
             if index in (2, 3):
-                if lighted:
+                if connected:
                     return [
                         ('none', line[:6]),
                         ('green', line[6:14]),
@@ -215,7 +234,7 @@ class RCLogo(urwid.WidgetWrap):
             return line
 
         logo_lines = [
-            get_line(index, line, self.lighted)
+            get_line(index, line, self.connected)
             for index, line in enumerate(LOGO.splitlines(keepends=True))
         ]
         self.text.set_text(logo_lines)
