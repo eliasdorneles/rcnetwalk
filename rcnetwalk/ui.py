@@ -27,12 +27,14 @@ PALETTE = [
 class BasePipe(urwid.WidgetWrap):
     content_choices = ()
 
-    def __init__(self, rotate=0, connected=False):
+    def __init__(self, rotate=0, connected=False, callback=None):
         if not self.content_choices:
             raise ValueError("You should set content_choices when subclassing BasePipe")
         self.connected = connected
-        self.iter_content = cycle([c.strip() for c in self.content_choices])
+        self.iter_content = cycle(self.content_choices)
         self.text = urwid.Text(u'')
+        self.callback = callback
+        self.connectors = {}
         self.rotate()
         if rotate > 0:
             for i in range(rotate):
@@ -40,7 +42,9 @@ class BasePipe(urwid.WidgetWrap):
         super(BasePipe, self).__init__(self.text)
 
     def rotate(self):
-        self.text.set_text(next(self.iter_content))
+        self.connectors, text = next(self.iter_content)
+        text = text.strip()
+        self.text.set_text(text)
 
     def selectable(self):
         return True
@@ -51,10 +55,16 @@ class BasePipe(urwid.WidgetWrap):
     def mouse_event(self, size, event, button, col, row, focus):
         if event == 'mouse press':
             self.rotate()
+            if self.callback:
+                self.callback(self)
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.connectors)
 
 
 class TeePipe(BasePipe):
     content_choices = (
+        ({'left', 'up', 'right'},
 u'''
 ████████    ████████
 ████████    ████████
@@ -66,9 +76,9 @@ u'''
 ████████████████████
 ████████████████████
 ████████████████████
-''', # NOQA
+'''), # NOQA
 
-u'''
+({'up', 'right', 'down'}, u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
@@ -79,9 +89,9 @@ u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
-''', # NOQA
+'''), # NOQA
 
-u'''
+({'left', 'right', 'down'}, u'''
 ████████████████████
 ████████████████████
 ████████████████████
@@ -92,9 +102,9 @@ u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
-''', # NOQA
+'''), # NOQA
 
-u'''
+({'left', 'up', 'down'}, u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
@@ -105,12 +115,13 @@ u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
-''',
+'''),
     )
 
 
 class SimplePipe(BasePipe):
     content_choices = [
+({'left', 'right'},
 u'''
 ████████████████████
 ████████████████████
@@ -122,9 +133,9 @@ u'''
 ████████████████████
 ████████████████████
 ████████████████████
-''', # NOQA
+'''), # NOQA
 
-u'''
+({'up', 'down'}, u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
@@ -135,12 +146,13 @@ u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
-''',
+'''),
     ]
 
 
 class ElbowPipe(BasePipe):
     content_choices = [
+({'left', 'up'},
 u'''
 ████████    ████████
 ████████    ████████
@@ -152,8 +164,9 @@ u'''
 ████████████████████
 ████████████████████
 ████████████████████
-''', # NOQA
+'''), # NOQA
 
+({'up', 'right'},
 u'''
 ████████    ████████
 ████████    ████████
@@ -165,9 +178,9 @@ u'''
 ████████████████████
 ████████████████████
 ████████████████████
-''', # NOQA
+'''), # NOQA
 
-u'''
+({'right', 'down'}, u'''
 ████████████████████
 ████████████████████
 ████████████████████
@@ -178,9 +191,9 @@ u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
-''', # NOQA
+'''), # NOQA
 
-u'''
+({'left', 'down'}, u'''
 ████████████████████
 ████████████████████
 ████████████████████
@@ -191,7 +204,7 @@ u'''
 ████████    ████████
 ████████    ████████
 ████████    ████████
-''',
+'''),
     ]
 
 
