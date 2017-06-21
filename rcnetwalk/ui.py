@@ -20,6 +20,7 @@ LOGO = u'''
 
 PALETTE = [
     ('green', 'dark green', ''),
+    ('greenbg', '', 'dark blue'),
     ('none', '', ''),
 ]
 
@@ -39,12 +40,15 @@ class BasePipe(urwid.WidgetWrap):
         if rotate > 0:
             for i in range(rotate):
                 self.rotate()
+        self.update()
         super(BasePipe, self).__init__(self.text)
 
     def rotate(self):
         self.connectors, text = next(self.iter_content)
-        text = text.strip()
-        self.text.set_text(text)
+        self._current_text = text.strip()
+
+    def update(self):
+        self.text.set_text(self._current_text)
 
     def selectable(self):
         return True
@@ -57,9 +61,11 @@ class BasePipe(urwid.WidgetWrap):
             self.rotate()
             if self.callback:
                 self.callback(self)
+            self.update()
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.connectors)
+        return '%s(%r, connected=%r)' % (self.__class__.__name__,
+                                         self.connectors, bool(self.connected))
 
 
 class TeePipe(BasePipe):
@@ -211,6 +217,7 @@ u'''
 class Computer(urwid.WidgetWrap):
     def __init__(self, connected=False, is_server=False, rotate=0):
         self.text = urwid.Text(u'')
+        self.is_server = is_server
         self.connected = is_server or connected
         self.iter_connector = cycle(['up', 'right', 'down', 'left'])
         self._rotate()
