@@ -48,6 +48,8 @@ class BasePipe(urwid.WidgetWrap):
         self._current_text = text.strip()
 
     def update(self):
+        if self.connected:
+            self._current_text = 'C' + self._current_text[1:]
         self.text.set_text(self._current_text)
 
     def selectable(self):
@@ -67,9 +69,25 @@ class BasePipe(urwid.WidgetWrap):
         return '%s(%r, connected=%r)' % (self.__class__.__name__,
                                          self.connectors, bool(self.connected))
 
+class CrossPipe(BasePipe):
+    content_choices = [
+        ({'left', 'up', 'right', 'down'},
+u'''
+████████    ████████
+████████    ████████
+████████    ████████
+████████    ████████
+                    
+                    
+████████    ████████
+████████    ████████
+████████    ████████
+████████    ████████
+'''),
+    ]
 
 class TeePipe(BasePipe):
-    content_choices = (
+    content_choices = [
         ({'left', 'up', 'right'},
 u'''
 ████████    ████████
@@ -122,7 +140,7 @@ u'''
 ████████    ████████
 ████████    ████████
 '''),
-    )
+    ]
 
 
 class SimplePipe(BasePipe):

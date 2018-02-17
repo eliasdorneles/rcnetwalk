@@ -1,6 +1,7 @@
 import urwid
 from functools import partial
 from .ui import (
+    CrossPipe,
     BasePipe,
     TeePipe,
     SimplePipe,
@@ -8,7 +9,6 @@ from .ui import (
     Computer,
     PALETTE
 )
-
 
 def exit_on_q(key):
     if key in ('q', 'Q', 'esc'):
@@ -22,11 +22,17 @@ def find_cols_rows():
 
 class Game:
     def __init__(self):
+        # self.grid_widgets = [
+        #     Computer(is_server=True, rotate=1), TeePipe(), TeePipe(), Computer(rotate=3),
+        #     ElbowPipe(connected=1), TeePipe(), ElbowPipe(), Computer(rotate=3),
+        #     Computer(), TeePipe(), SimplePipe(), Computer(rotate=3),
+        #     Computer(rotate=1), TeePipe(), SimplePipe(), Computer(rotate=3),
+        # ]
         self.grid_widgets = [
-            Computer(is_server=True, rotate=1), TeePipe(), TeePipe(), Computer(rotate=3),
-            ElbowPipe(connected=1), TeePipe(), ElbowPipe(), Computer(rotate=3),
-            Computer(), TeePipe(), SimplePipe(), Computer(rotate=3),
-            Computer(rotate=1), TeePipe(), SimplePipe(), Computer(rotate=3),
+            Computer(is_server=True, rotate=1), CrossPipe(), CrossPipe(), Computer(rotate=3),
+            CrossPipe(), CrossPipe(), CrossPipe(), Computer(rotate=3),
+            Computer(), CrossPipe(), CrossPipe(), Computer(rotate=3),
+            Computer(rotate=1), CrossPipe(), CrossPipe(), Computer(rotate=3)
         ]
         self.statusbar = urwid.Text('Ready')
 
@@ -35,6 +41,8 @@ class Game:
 
         for w in self.pipe_widgets:
             w.callback = partial(self.play)
+
+        self.play(None)
 
     def play(self, clicked_widget):
         self._update_connected_state()
@@ -69,9 +77,9 @@ class Game:
         seen = set()
 
         def set_connected(node, direction):
-            if node in seen:
+            if (node, direction) in seen:
                 return
-            seen.add(node)
+            seen.add((node, direction))
             neighbours = self.neighbours(node)
             if isinstance(node, Computer):
                 if node.is_server:
@@ -91,6 +99,7 @@ class Game:
             conn = w.connector_position
             if neighbours[conn]:
                 set_connected(neighbours[w.connector_position], DIRECTION_FROM[conn])
+
 
     @property
     def pipe_widgets(self):
