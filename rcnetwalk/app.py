@@ -39,8 +39,11 @@ class Game:
         for i, w in enumerate(self.grid_widgets):
             w._grid_position = i
 
-        for w in self.pipe_widgets:
+        for w in self.grid_widgets:
+            if isinstance(w, Computer) and w.is_server:
+                continue
             w.callback = partial(self.play)
+        self.play(None)
 
         self.play(None)
 
@@ -50,11 +53,13 @@ class Game:
             w.update()
         if self.won():
             self.statusbar.set_text('YAAY, congrats, you win!')
+        else:
+            self.statusbar.set_text('Try rotating a piece')
 
     def won(self):
         return all(c.connected for c in self.computer_widgets)
 
-    def neighbours(self, widget):
+    def find_neighbours(self, widget):
         i = widget._grid_position
         width, height = 4, 4
         return {
@@ -80,7 +85,7 @@ class Game:
             if (node, direction) in seen:
                 return
             seen.add((node, direction))
-            neighbours = self.neighbours(node)
+            neighbours = self.find_neighbours(node)
             if isinstance(node, Computer):
                 if node.is_server:
                     return
@@ -95,7 +100,7 @@ class Game:
                         set_connected(neighbours[conn], DIRECTION_FROM[conn])
 
         for w in self.server_widgets:
-            neighbours = self.neighbours(w)
+            neighbours = self.find_neighbours(w)
             conn = w.connector_position
             if neighbours[conn]:
                 set_connected(neighbours[w.connector_position], DIRECTION_FROM[conn])

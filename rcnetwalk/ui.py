@@ -251,7 +251,7 @@ class Computer(urwid.WidgetWrap):
     def update(self):
         def get_line(index, line, connected):
             if (index == 0 and self.connector_position == 'up'
-                    or index == 19 and self.connector_position == 'down'):
+                    or index == 9 and self.connector_position == 'down'):
                 line = line[:8] + '    ' + line[12:]
             if index in (4, 5):
                 if self.connector_position == 'left':
@@ -276,3 +276,11 @@ class Computer(urwid.WidgetWrap):
             for index, line in enumerate(LOGO.splitlines(keepends=True))
         ]
         self.text.set_text(logo_lines)
+
+    def keypress(self, size, key):
+        return key
+
+    def mouse_event(self, size, event, button, col, row, focus):
+        if event == 'mouse press':
+            self._rotate()
+            self.update()
