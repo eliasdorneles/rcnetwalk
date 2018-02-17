@@ -1,4 +1,7 @@
+from random import randint
 import urwid
+import threading
+
 from functools import partial
 from .ui import (
     BasePipe,
@@ -19,23 +22,50 @@ def exit_on_q(key):
 def find_cols_rows():
     return urwid.raw_display.Screen().get_cols_rows()
 
+def randget():
+    i = randint(0,6) # exclude simplepipes
+    if i < 2:
+        return ElbowPipe()
+    elif i is 2:
+        return Computer(rotate=randint(1,3))
+    elif i is 3:
+        return SimplePipe()
+    else:
+        return TeePipe()
 
+def generategrid():
+    widgets = [
+        Computer(is_server=True, rotate=1), randget(), randget(), randget(),
+        randget(), randget(), randget(), randget(),
+        randget(), randget(), randget(), randget(),
+        randget(), randget(), randget(), Computer(rotate=3),
+    ]
+    n = sum(isinstance(w, Computer) for w in widgets)
+    if n is 3:
+        return widgets
+    else:
+        return generategrid()
+    
+    
 class Game:
     def __init__(self):
-        self.grid_widgets = [
-            Computer(is_server=True, rotate=1), TeePipe(), TeePipe(), Computer(rotate=3),
-            ElbowPipe(connected=1), TeePipe(), ElbowPipe(), Computer(rotate=3),
-            Computer(), TeePipe(), SimplePipe(), Computer(rotate=3),
-            Computer(rotate=1), TeePipe(), SimplePipe(), Computer(rotate=3),
-        ]
-        self.statusbar = urwid.Text('Ready')
+#        self.grid_widgets = [
+#            Computer(is_server=True, rotate=1), TeePipe(), TeePipe(), Computer(rotate=3),
+#            ElbowPipe(connected=1), TeePipe(), ElbowPipe(), Computer(rotate=3),
+#            Computer(), TeePipe(), SimplePipe(), Computer(rotate=3),
+#            Computer(rotate=1), TeePipe(), SimplePipe(), Computer(rotate=3),
+#        ]
 
+        self.grid_widgets = generategrid()
+
+        self.statusbar = urwid.Text('Ready')
+        self.k = 0
         for i, w in enumerate(self.grid_widgets):
             w._grid_position = i
 
         for w in self.pipe_widgets:
-            w.callback = partial(self.play)
-
+            w.callback = partial(self.solve)
+        
     def play(self, clicked_widget):
         self._update_connected_state()
         for w in self.grid_widgets:
@@ -46,6 +76,42 @@ class Game:
     def won(self):
         return all(c.connected for c in self.computer_widgets)
 
+    def dosolve(self, mainloop, pwidgets, n):
+        txt = str(self.k)
+        self.statusbar.set_text(txt)
+        
+        self._update_connected_state()
+        for w in self.grid_widgets:
+            w.update()
+
+        if (self.k % 1000) is 0:
+            mainloop.draw_screen()
+
+        if n is 0:
+            for i in range(0,4):
+                self.k = self.k+1
+                pwidgets[n].rotate()
+                self._update_connected_state()
+                if self.won():
+                    for w in self.grid_widgets:
+                        w.update()
+                    txt = 'solved at k = ' + str(self.k)
+                    self.statusbar.set_text(txt)
+                    mainloop.draw_screen()
+                    return True
+        else:
+            for i in range(0,4):
+                pwidgets[n].rotate()
+                if self.dosolve(mainloop, pwidgets, n - 1):
+                    return True
+        return False
+                
+    def solve(self, mainloop):
+        pwidgets = self.pipe_widgets
+        gwidgets = self.grid_widgets
+        
+        return self.dosolve(mainloop, gwidgets, len(gwidgets) - 1)
+    
     def neighbours(self, widget):
         i = widget._grid_position
         width, height = 4, 4
@@ -120,8 +186,13 @@ class Game:
         widget = urwid.Padding(widget, width=80, align='center')
         widget = urwid.Pile([widget, self.statusbar])
         widget = urwid.Filler(widget)
-        urwid.MainLoop(widget, PALETTE, unhandled_input=exit_on_q).run()
 
+#        mainloop = urwid.MainLoop(widget, PALETTE, unhandled_input=exit_on_q).run()
+        mainloop = urwid.MainLoop(widget, PALETTE, unhandled_input=exit_on_q)
+
+        refresh = threading.Thread(target=self.solve, args=(mainloop,))
+        refresh.start()
+        mainloop.run()
 
 if __name__ == '__main__':
     g = Game()

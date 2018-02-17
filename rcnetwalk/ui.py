@@ -230,6 +230,9 @@ class Computer(urwid.WidgetWrap):
         self.connector_position = next(self.iter_connector)
         self.update()
 
+    def rotate(self):
+        self._rotate()
+
     def update(self):
         def get_line(index, line, connected):
             if (index == 0 and self.connector_position == 'up'
