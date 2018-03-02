@@ -49,6 +49,7 @@ class Game:
         if not self._all_connected():
             self._generate_game()
         self._reduce_to_minimal_connections()
+        self._scramble()
 
     def _reduce_to_minimal_connections(self):
         """Reduce game into minimal connections that is still playable"""
@@ -110,6 +111,10 @@ class Game:
 
     def _scramble(self):
         """Scramble rotation for all non-computer widgets"""
+        for pipe in self.pipe_widgets:
+            for x in range(random.randint(0, 5)):
+                pipe.rotate()
+        self._update_connected_state()
 
     def _update_ui(self):
         for w in self.grid_widgets:
