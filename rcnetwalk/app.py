@@ -1,14 +1,17 @@
+import random
 import urwid
 from functools import partial
 from .ui import (
-    CrossPipe,
     BasePipe,
-    TeePipe,
+    CrossPipe,
+    NoPipe,
     SimplePipe,
+    TeePipe,
     ElbowPipe,
     Computer,
     PALETTE
 )
+
 
 def exit_on_q(key):
     if key in ('q', 'Q', 'esc'):
@@ -20,43 +23,110 @@ def find_cols_rows():
     return urwid.raw_display.Screen().get_cols_rows()
 
 
+def random_position(sequence):
+    return random.randint(0, len(sequence) - 1)
+
+
 class Game:
     def __init__(self):
-        # self.grid_widgets = [
-        #     Computer(is_server=True, rotate=1), TeePipe(), TeePipe(), Computer(rotate=3),
-        #     ElbowPipe(connected=1), TeePipe(), ElbowPipe(), Computer(rotate=3),
-        #     Computer(), TeePipe(), SimplePipe(), Computer(rotate=3),
-        #     Computer(rotate=1), TeePipe(), SimplePipe(), Computer(rotate=3),
-        # ]
-        self.grid_widgets = [
-            Computer(is_server=True, rotate=1), CrossPipe(), CrossPipe(), Computer(rotate=3),
-            CrossPipe(), CrossPipe(), CrossPipe(), Computer(rotate=3),
-            Computer(), CrossPipe(), CrossPipe(), Computer(rotate=3),
-            Computer(rotate=1), CrossPipe(), CrossPipe(), Computer(rotate=3)
-        ]
-        self.statusbar = urwid.Text('Ready')
-
-        for i, w in enumerate(self.grid_widgets):
-            w._grid_position = i
+        self._generate_game()
 
         for w in self.grid_widgets:
-            if isinstance(w, Computer) and w.is_server:
-                continue
             w.callback = partial(self.play)
-        self.play(None)
+        self.statusbar = urwid.Text('Ready')
+        self._update_ui()
 
-        self.play(None)
+    def _generate_game(self):
+        self.grid_widgets = [None] * 16
+        for x in range(5):
+            self.place_widget(random_position(self.grid_widgets), Computer())
+        self.place_widget(random_position(self.grid_widgets), Computer(is_server=True))
 
-    def play(self, clicked_widget):
+        for i, widget in enumerate(self.grid_widgets):
+            if widget is None:
+                self.place_widget(i, CrossPipe())
         self._update_connected_state()
+        if not self._all_connected():
+            self._generate_game()
+        self._reduce_to_minimal_connections()
+
+    def _reduce_to_minimal_connections(self):
+        """Reduce game into minimal connections that is still playable"""
+
+        def generate_for_class(pipe_cls):
+            return [
+                pipe_cls(rotate=n_rotations)
+                for n_rotations
+                in range(len(pipe_cls.content_choices))
+            ]
+
+        def get_reductions(pipe):
+            if isinstance(pipe, CrossPipe):
+                return generate_for_class(TeePipe)
+            elif isinstance(pipe, TeePipe):
+                return generate_for_class(ElbowPipe) + generate_for_class(SimplePipe)
+            elif isinstance(pipe, SimplePipe):
+                return generate_for_class(NoPipe)
+
+            return []
+
+        def get_random_pipe_widget_position():
+            pos = random_position(self.grid_widgets)
+            if isinstance(self.grid_widgets[pos], Computer):
+                return get_random_pipe_widget_position()
+            return pos
+
+        fixed = set()
+        while len(fixed) != len(self.pipe_widgets):
+            position = get_random_pipe_widget_position()
+            while position in fixed:
+                position = get_random_pipe_widget_position()
+
+            done = False
+            while not done:
+                prev_widget = self.grid_widgets[position]
+                candidates = get_reductions(prev_widget)
+                if not candidates:
+                    break
+                working = []
+
+                for cand in candidates:
+                    self.place_widget(position, cand)
+                    self._update_connected_state()
+                    if self._all_connected():
+                        working.append(cand)
+                if working:
+                    self.place_widget(position, working[-1])
+                else:
+                    self.place_widget(position, prev_widget)
+                    done = True
+                self._update_connected_state()
+
+            fixed.add(position)
+
+    def place_widget(self, index, widget):
+        self.grid_widgets[index] = widget
+        self.grid_widgets[index]._grid_position = index
+
+    def _scramble(self):
+        """Scramble rotation for all non-computer widgets"""
+
+    def _update_ui(self):
         for w in self.grid_widgets:
             w.update()
-        if self.won():
+        if self._all_connected():
             self.statusbar.set_text('YAAY, congrats, you win!')
         else:
             self.statusbar.set_text('Try rotating a piece')
 
-    def won(self):
+    def play(self, clicked_widget):
+        if clicked_widget is not None:
+            clicked_widget.rotate()
+            self.statusbar.set_text('clicked' + str(clicked_widget))
+        self._update_connected_state()
+        self._update_ui()
+
+    def _all_connected(self):
         return all(c.connected for c in self.computer_widgets)
 
     def find_neighbours(self, widget):
@@ -104,7 +174,6 @@ class Game:
             conn = w.connector_position
             if neighbours[conn]:
                 set_connected(neighbours[w.connector_position], DIRECTION_FROM[conn])
-
 
     @property
     def pipe_widgets(self):
